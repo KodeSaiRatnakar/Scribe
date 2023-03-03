@@ -75,15 +75,20 @@ class MyApp extends StatelessWidget {
                                           if (zeroNetController
                                                   .siteInfo.value!.certUserId !=
                                               null) {
-                                            zeroNetController
-                                                    .userObject.postVotes[
+                                            var id = menuController
+                                                .currentArticle.value!.id;
+
+                                            if (!zeroNetController
+                                                .userObject.postVotes
+                                                .containsKey("$id")) {
+                                              zeroNetController.userObject
+                                                  .postVotes[id.toString()] = 1;
+
+                                              zeroNetController.likeArticle(
                                                 menuController
-                                                    .currentArticle.value!.id
-                                                    .toString()] = 1;
-                                            zeroNetController.likeArticle(
-                                              menuController
-                                                  .currentArticle.value!.id,
-                                            );
+                                                    .currentArticle.value!.id,
+                                              );
+                                            }
                                           } else {
                                             showZeroNetxDialog(
                                               context,
@@ -131,9 +136,7 @@ class MyApp extends StatelessWidget {
                                   children: [
                                     IconButton(
                                       onPressed: () {
-                                        menuController.showCommentBox.value =
-                                            !menuController
-                                                .showCommentBox.value;
+                                        //TODO: request current article's comment focus node
                                       },
                                       icon: const Icon(Icons.messenger),
                                     ),
@@ -160,24 +163,29 @@ class MyApp extends StatelessWidget {
                     })
                   : const SizedBox();
             }),
-            body: SingleChildScrollView(
-              //controller: ScrollController(),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const AppBar(),
-                  Row(
-                    children: [
-                      Spacer(flex: themeController.pagePadding.value),
-                      Flexible(
-                        flex: themeController.bodyFlex.value,
-                        child: body,
-                      ),
-                      Spacer(flex: themeController.pagePadding.value)
-                    ],
-                  )
-                ],
+            body: RefreshIndicator(
+              onRefresh: () async {
+                await zeroNetController.reload();
+              },
+              child: SingleChildScrollView(
+                //controller: ScrollController(),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const AppBar(),
+                    Row(
+                      children: [
+                        Spacer(flex: themeController.pagePadding.value),
+                        Flexible(
+                          flex: themeController.bodyFlex.value,
+                          child: body,
+                        ),
+                        Spacer(flex: themeController.pagePadding.value)
+                      ],
+                    )
+                  ],
+                ),
               ),
             ),
           );

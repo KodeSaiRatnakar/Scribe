@@ -47,14 +47,30 @@ class ZeroNetController extends GetxController {
         if (name == 'file_done') {
           var path = param.toString();
 
+          var dataPattern = 'data/data.json';
           var pattern = 'data/users/';
-
-          if (path.startsWith('${pattern}1') && path.endsWith('.json')) {
+          if (path.startsWith(dataPattern)) {
+            zeroNetController.fetchAllArticles();
+            zeroNetController.fetchRecentArticles();
+          } else if (path.startsWith('${pattern}1') && path.endsWith('.json')) {
             debugPrint('User Data Changed');
             final userFile = path.replaceFirst(pattern, '');
             final dataOrContentJsonFile =
                 userFile.replaceFirst(RegExp(r'1\w+'), '');
-            if (dataOrContentJsonFile == "/data.json") {}
+            if (dataOrContentJsonFile == "/data.json") {
+              final currentUserAddr =
+                  zeroNetController.siteInfo.value?.authAddress;
+              String? currentUserDir;
+
+              if (currentUserAddr != null) {
+                currentUserDir = 'data/users/$currentUserAddr';
+              }
+              if (currentUserDir != null && path.startsWith(currentUserDir)) {
+                return;
+              } else {
+                reload();
+              }
+            }
           }
         } else if (name == 'cert_changed') {
           loadSiteInfo();
@@ -233,6 +249,19 @@ class ZeroNetController extends GetxController {
       update_changed_files: true,
     );
   }
+
+  Future reload() async {
+    if (menuController.currentRoute.value == Menu.article) {
+      int postId = menuController.currentArticle.value!.id;
+      var res = await ZeroNet.instance.dbQueryFuture(singlePost(postId));
+      if (res.isMsg) {
+        Article a = Article.fromJson(res.message!.result[0]);
+        menuController.currentArticle.value = a;
+        commentsList.clear();
+        await loadComments(postId);
+      }
+    }
+  }
 }
 
 String recentFetchQuery() {
@@ -274,4 +303,13 @@ String commentQuery(int postId) {
 			LEFT JOIN keyvalue ON (keyvalue.json_id = json_content.json_id AND key = 'cert_user_id')
 			WHERE post_id = $postId ORDER BY date_added DESC
    """;
+}
+
+String singlePost(int id) {
+  return '''SELECT post.*,  COUNT(comment_id) AS comments,
+(SELECT COUNT(*) FROM post_vote WHERE post_vote.post_id = post.post_id) AS votes
+FROM post
+LEFT JOIN comment USING (post_id) WHERE post_id is $id
+GROUP BY post_id
+ORDER BY votes DESC''';
 }
